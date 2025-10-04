@@ -9,7 +9,7 @@ clean:
 	rm -rf $(BUILD)/$(NAME)
 	
 install:
-	cp $(BUILD)/$(NAME) ../../Developer/usr/bin/$(NAME)
+	cp $(BUILD)/$(NAME) /usr/local/bin/$(NAME)
 	
 uninstall:
 	rm $(PRIMESDK)/bin/$(NAME)
