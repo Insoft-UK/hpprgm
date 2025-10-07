@@ -39,7 +39,7 @@ static bool verbose = false;
 // MARK: - Command Line
 void version(void) {
     std::cout << "Insoft "<< NAME << " version, " << VERSION_NUMBER << " (BUILD " << VERSION_CODE << ")\n";
-    std::cout << "Copyright (C) " << YEAR << " Insoft. All rights reserved.\n";
+    std::cout << "Copyright (C) " << YEAR << " Insoft.\n";
     std::cout << "Built on: " << DATE << "\n";
     std::cout << "Licence: MIT License\n\n";
     std::cout << "For more information, visit: http://www.insoft.uk\n";
@@ -312,15 +312,16 @@ int main(int argc, const char **argv)
      (excluding its extension) as the output file name.
      */
     if (out_filename.empty() || out_filename == in_filename) {
-        out_filename = std::filesystem::path(in_filename).parent_path();
-        out_filename.append("/");
-        out_filename.append(std::filesystem::path(in_filename).stem().string());
+        out_filename = std::filesystem::path(in_filename).replace_extension("");
     }
     
     /*
      If the output file does not have an extension, a default .prgm or .hpprgm is applied.
      */
     if (std::filesystem::path(out_filename).extension().empty()) {
+        if (std::filesystem::is_directory(out_filename)) {
+            out_filename = std::filesystem::path(out_filename).append(std::filesystem::path(in_filename).stem().string());
+        }
         out_filename.append(std::filesystem::path(in_filename).extension() == ".hpprgm" ? ".prgm" : ".hpprgm");
     }
 
