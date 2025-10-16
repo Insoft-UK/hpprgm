@@ -37,7 +37,7 @@ static std::wstring extractPPLCode(const std::string& s) {
         is.read((char *)&u32, sizeof(uint32_t));
         if (u32 == 0x00C0009B) {
             is.seekg(is.tellg(), std::ios::beg);
-            wstr = utf::read_as_utf16(is);
+            wstr = utf::read(is, utf::BOMnone);
             is.close();
             
             return wstr;
@@ -61,7 +61,7 @@ static std::wstring extractPPLCode(const std::string& s) {
     }
     
     is.seekg(codePos, std::ios::beg);
-    wstr = utf::read_as_utf16(is);
+    wstr = utf::read(is, utf::BOMnone);
     return wstr;
 }
 
@@ -104,7 +104,7 @@ std::wstring hpprgm::load(const std::string& filepath) {
     
     if (!std::filesystem::exists(filepath)) return wstr;
     
-    if (std::filesystem::path(filepath).extension() != ".hpprgm") wstr = utf::load_utf16(filepath);
+    if (std::filesystem::path(filepath).extension() != ".hpprgm") wstr = utf::load(filepath, utf::BOMle);
     if (std::filesystem::path(filepath).extension() == ".hpprgm") {
         if (isG2(filepath) || isG1(filepath)) wstr = extractPPLCode(filepath);
     }

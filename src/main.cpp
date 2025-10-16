@@ -244,7 +244,7 @@ int main(int argc, const char **argv)
     }
     
     if (std::filesystem::path(out_filename).extension() == ".hpprgm") {
-        std::wstring wstr = utf::load_utf16(in_filename);
+        std::wstring wstr = utf::load(in_filename);
         std::string str = utf::utf8(wstr);
         hpprgm::save(out_filename, str);
     }
