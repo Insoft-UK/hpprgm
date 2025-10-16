@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2025 Insoft. All rights reserved.
+// Copyright (c) 2024-2025 Insoft.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,8 @@
 #include <fstream>
 #include <iomanip>
 
+#include "hpprgm.hpp"
+#include "utf.hpp"
 
 static bool verbose = false;
 
@@ -123,125 +125,6 @@ namespace std::filesystem {
 #else
     #error "C++11 or newer is required"
 #endif
-
-// MARK: - Other
-
-
-bool isHPPrgrmFileFormat(std::ifstream &infile)
-{
-    uint32_t u32;
-    infile.read((char *)&u32, sizeof(uint32_t));
-    
-#ifdef __LITTLE_ENDIAN__
-    u32 = std::byteswap(u32);
-#endif
-    
-    if (u32 != 0x7C618AB2) {
-        goto invalid;
-    }
-    
-    while (!infile.eof()) {
-        infile.read((char *)&u32, sizeof(uint32_t));
-#ifdef __LITTLE_ENDIAN__
-    u32 = std::byteswap(u32);
-#endif
-        if (u32 == 0x9B00C000) return true;
-        infile.peek();
-    }
-    
-invalid:
-    infile.seekg(std::ios::beg);
-    return false;
-}
-
-void saveAsPrgm(const std::string& filepath, std::ifstream& infile) {
-    if (!isHPPrgrmFileFormat(infile)) {
-        // G1 .hpprgm file format.
-        uint32_t offset;
-        infile.read(reinterpret_cast<char*>(&offset), sizeof(offset));
-#ifndef __LITTLE_ENDIAN__
-        offset = swap_endian(offset);
-#endif
-        offset += 8;
-        infile.seekg(offset, std::ios::beg);
-
-        if (!infile.good()) {
-            std::cerr << "Seek failed (possibly past EOF or bad stream).\n";
-            infile.close();
-            return;
-        }
-    }
-    
-    std::ofstream outfile;
-    outfile.open(filepath, std::ios::out | std::ios::binary);
-    if(!outfile.is_open()) {
-        infile.close();
-        return;
-    }
-    
-    uint16_t utf16le = 0xFFFE;
-#ifdef __LITTLE_ENDIAN__
-    utf16le = std::byteswap(utf16le);
-#endif
-    outfile.write((char *)&utf16le, 2);
-    do {
-        infile.read((char *)&utf16le, 2);
-        if(!utf16le) break;
-        outfile.write((char *)&utf16le, 2);
-        infile.peek();
-    } while (!infile.eof());
-}
-
-void saveAsG1Hpprgm(const std::string& filepath, std::ifstream& infile) {
-    
-    infile.seekg(0, std::ios::end);
-    // Get the current file size.
-    std::streampos codeSize = infile.tellg();
-    infile.seekg(2, std::ios::beg);
-    
-    std::ofstream outfile;
-    outfile.open(filepath, std::ios::out | std::ios::binary);
-    if(!outfile.is_open()) {
-        infile.close();
-        return;
-    }
-    
-    // HEADER
-    /**
-     0x0000-0x0003: Header Size, excludes itself (so the header begins at offset 4)
-     */
-    outfile.put(0x0C); // 12
-    outfile.put(0x00);
-    outfile.put(0x00);
-    outfile.put(0x00);
-    
-    // Write the 12-byte UTF-16LE header.
-    /**
-     0x0004-0x0005: Number of variables in table.
-     0x0006-0x0007: Number of uknown?
-     0x0008-0x0009: Number of exported functions in table.
-     0x000A-0x000F: Conn. kit generates 7F 01 00 00 00 00 but all zeros seems to work too.
-     */
-    for (int i = 0; i < 12; ++i) {
-        outfile.put(0x00);
-    }
-    
-    uint32_t size = (uint32_t)codeSize;
-    outfile.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    
-    /**
-     0x0004-0x----: Code in UTF-16 LE until 00 00
-     */
-    std::vector<uint8_t> ppl;
-    ppl.resize(codeSize);
-    infile.read((char *)ppl.data(), codeSize);
-    outfile.write((char *)ppl.data(), codeSize);
-    
-    outfile.put(0x00);
-    outfile.put(0x00);
-    
-    outfile.close();
-}
 
 // MARK: - Main
 
@@ -356,11 +239,14 @@ int main(int argc, const char **argv)
     }
     
     if (std::filesystem::path(out_filename).extension() == ".prgm") {
-        saveAsPrgm(out_filename, infile);
+        std::wstring wstr = hpprgm::load(in_filename);
+        utf::save(out_filename, wstr);
     }
     
     if (std::filesystem::path(out_filename).extension() == ".hpprgm") {
-        saveAsG1Hpprgm(out_filename, infile);
+        std::wstring wstr = utf::load_utf16(in_filename);
+        std::string str = utf::utf8(wstr);
+        hpprgm::save(out_filename, str);
     }
     
     if (std::filesystem::exists(out_filename)) {
