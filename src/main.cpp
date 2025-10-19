@@ -40,11 +40,13 @@ static bool verbose = false;
 
 // MARK: - Command Line
 void version(void) {
-    std::cout << "Insoft "<< NAME << " version, " << VERSION_NUMBER << " (BUILD " << VERSION_CODE << ")\n";
-    std::cout << "Copyright (C) " << YEAR << " Insoft.\n";
-    std::cout << "Built on: " << DATE << "\n";
-    std::cout << "Licence: MIT License\n\n";
-    std::cout << "For more information, visit: http://www.insoft.uk\n";
+    using namespace std;
+    std::cout
+    << "Copyright (C) 2024-" << YEAR << " Insoft.\n"
+    << "Insoft "<< NAME << " version, " << VERSION_NUMBER << " (BUILD " << VERSION_CODE << ")\n"
+    << "Built on: " << DATE << "\n"
+    << "Licence: MIT License\n\n"
+    << "For more information, visit: http://www.insoft.uk\n";
 }
 
 void error(void) {
@@ -53,15 +55,31 @@ void error(void) {
 }
 
 void info(void) {
-    std::cout << "Insoft "<< NAME << " version, " << VERSION_NUMBER << "\n";
-    std::cout << "Copyright (C) " << YEAR << " Insoft. All rights reserved.\n\n";
+    using namespace std;
+    std::cout
+    << "          ***********     \n"
+    << "        ************      \n"
+    << "      ************        \n"
+    << "    ************  **      \n"
+    << "  ************  ******    \n"
+    << "************  **********  \n"
+    << "**********    ************\n"
+    << "************    **********\n"
+    << "  **********  ************\n"
+    << "    ******  ************  \n"
+    << "      **  ************    \n"
+    << "        ************      \n"
+    << "      ************        \n"
+    << "    ************          \n\n"
+    << "Copyright (C) 2024-" << YEAR << " Insoft.\n"
+    << "Insoft " << NAME << "\n\n";
 }
 
 void help(void) {
     std::cout
-    << "Insoft "<< NAME << " version, " << VERSION_NUMBER << " (BUILD " << VERSION_CODE << ")"
-    << "Copyright (C) " << YEAR << " Insoft. All rights reserved."
-    << ""
+    << "Copyright (C) 2024-" << YEAR << " Insoft.\n"
+    << "Insoft "<< NAME << " version, " << VERSION_NUMBER << " (BUILD " << VERSION_CODE << ")\n"
+    << "\n"
     << "Usage: " << COMMAND_NAME << " <input-file> [-o <output-file>] [-v flags]"
     << ""
     << "Options:"
@@ -222,19 +240,19 @@ int main(int argc, const char **argv)
      process will be halted and an error message returned to the user.
      */
     if (in_filename == out_filename) {
-        std::cout << "Error: The output file must differ from the input file. Please specify a different output file name.\n";
+        std::cout << "❌ Error: The output file must differ from the input file. Please specify a different output file name.\n";
         return 0;
     }
     
     if (!std::filesystem::exists(in_filename)) {
-        std::cout << "Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file is invalid or not supported. Please ensure the file exists and has a valid format.\n";
+        std::cout << "❌ Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file is invalid or not supported. Please ensure the file exists and has a valid format.\n";
     }
     
     std::ifstream infile;
     
     infile.open(in_filename, std::ios::in | std::ios::binary);
     if(!infile.is_open()) {
-        std::cout << "Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file not found.\n";
+        std::cout << "❌ Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file not found.\n";
         return 0;
     }
     
@@ -250,7 +268,7 @@ int main(int argc, const char **argv)
     }
     
     if (std::filesystem::exists(out_filename)) {
-        std::cout << "File " << std::filesystem::path(out_filename).filename() << " succefuly created.\n";
+        std::cout << "✅ File " << std::filesystem::path(out_filename).filename() << " succefuly created.\n";
     }
     
     return 0;
