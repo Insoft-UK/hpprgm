@@ -41,7 +41,7 @@ static bool verbose = false;
 // MARK: - Command Line
 void version(void) {
     using namespace std;
-    std::cout
+    std::cerr
     << "Copyright (C) 2024-" << YEAR << " Insoft.\n"
     << "Insoft "<< NAME << " version, " << VERSION_NUMBER << " (BUILD " << VERSION_CODE << ")\n"
     << "Built on: " << DATE << "\n"
@@ -50,13 +50,12 @@ void version(void) {
 }
 
 void error(void) {
-    std::cout << COMMAND_NAME << ": try '" << COMMAND_NAME << " --help' for more information\n";
+    std::cerr << COMMAND_NAME << ": try '" << COMMAND_NAME << " --help' for more information\n";
     exit(0);
 }
 
 void info(void) {
-    using namespace std;
-    std::cout
+    std::cerr
     << "          ***********     \n"
     << "        ************      \n"
     << "      ************        \n"
@@ -76,7 +75,7 @@ void info(void) {
 }
 
 void help(void) {
-    std::cout
+    std::cerr
     << "Copyright (C) 2024-" << YEAR << " Insoft.\n"
     << "Insoft "<< NAME << " version, " << VERSION_NUMBER << " (BUILD " << VERSION_CODE << ")\n"
     << "\n"
@@ -240,19 +239,19 @@ int main(int argc, const char **argv)
      process will be halted and an error message returned to the user.
      */
     if (in_filename == out_filename) {
-        std::cout << "❌ Error: The output file must differ from the input file. Please specify a different output file name.\n";
+        std::cerr << "❌ Error: The output file must differ from the input file. Please specify a different output file name.\n";
         return 0;
     }
     
     if (!std::filesystem::exists(in_filename)) {
-        std::cout << "❌ Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file is invalid or not supported. Please ensure the file exists and has a valid format.\n";
+        std::cerr << "❌ Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file is invalid or not supported. Please ensure the file exists and has a valid format.\n";
     }
     
     std::ifstream infile;
     
     infile.open(in_filename, std::ios::in | std::ios::binary);
     if(!infile.is_open()) {
-        std::cout << "❌ Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file not found.\n";
+        std::cerr << "❌ Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file not found.\n";
         return 0;
     }
     
@@ -268,7 +267,7 @@ int main(int argc, const char **argv)
     }
     
     if (std::filesystem::exists(out_filename)) {
-        std::cout << "✅ File " << std::filesystem::path(out_filename).filename() << " succefuly created.\n";
+        std::cerr << "✅ File " << std::filesystem::path(out_filename).filename() << " succefuly created.\n";
     }
     
     return 0;
