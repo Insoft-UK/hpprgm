@@ -26,7 +26,7 @@
 #include <regex>
 #include <fstream>
 #include <iomanip>
-
+#include <filesystem>
 #include "hpprgm.hpp"
 #include "utf.hpp"
 
@@ -96,22 +96,21 @@ void help(void) {
 
 // MARK: - Extensions
 
-namespace std::filesystem {
-    std::string expand_tilde(const std::string& path) {
-        if (!path.empty() && path.starts_with("~")) {
+std::filesystem::path expand_tilde(const std::filesystem::path& path) {
+    if (!path.empty() && path.string().starts_with("~")) {
 #ifdef _WIN32
-            const char* home = std::getenv("USERPROFILE");
+        const char* home = std::getenv("USERPROFILE");
 #else
-            const char* home = std::getenv("HOME");
+        const char* home = std::getenv("HOME");
 #endif
-            
-            if (home) {
-                return std::string(home) + path.substr(1);  // Replace '~' with $HOME
-            }
+        
+        if (home) {
+            return std::string(home) + path.string().substr(1);  // Replace '~' with $HOME
         }
-        return path;  // return as-is if no tilde or no HOME
     }
+    return path;  // return as-is if no tilde or no HOME
 }
+
 
 #if __cplusplus >= 202302L
     #include <bit>
@@ -147,13 +146,16 @@ namespace std::filesystem {
 
 int main(int argc, const char **argv)
 {
+    namespace fs = std::filesystem;
+    
+    fs::path inpath, outpath;
+    
     if (argc == 1) {
         error();
         return 0;
     }
     
     std::string args(argv[0]);
-    std::string in_filename, out_filename;
 
     for( int n = 1; n < argc; n++ ) {
         if (*argv[n] == '-') {
@@ -161,7 +163,8 @@ int main(int argc, const char **argv)
             
             if (args == "-o") {
                 if (++n > argc) error();
-                out_filename = argv[n];
+                outpath = fs::path(argv[n]);
+                outpath = expand_tilde(outpath);
                 continue;
             }
 
@@ -185,89 +188,84 @@ int main(int argc, const char **argv)
             error();
             return 0;
         }
-        
-        in_filename = std::filesystem::expand_tilde(argv[n]);
+        inpath = fs::path(argv[n]);
+        inpath = expand_tilde(inpath);
+        if (inpath.parent_path().empty()) {
+            inpath = fs::path("./") / inpath;
+        }
     }
     
-    if (std::filesystem::path(in_filename).parent_path().empty()) {
-        in_filename.insert(0, "./");
-    }
-
-    /*
-     Initially, we display the command-line application’s basic information,
-     including its name, version, and copyright details.
-     */
-    info();
+    if (inpath != "/dev/stdout") info();
+    
     
     
     /*
-     If the input file does not have an extension, default is .hpprgm is applied.
+     If the input file does not have an extension, default .hpprgm is assumed and applied.
      */
-    if (std::filesystem::path(in_filename).extension().empty()) {
-        in_filename.append(".hpprgm");
+    if (inpath.extension().empty()) {
+        inpath.append(".hpprgm");
     }
     
     /*
      If no output file is specified, the program will use the input file’s name
      (excluding its extension) as the output file name.
      */
-    if (out_filename.empty() || out_filename == in_filename) {
-        out_filename = std::filesystem::path(in_filename).replace_extension("");
+    if (outpath.empty() || outpath == inpath) {
+        outpath = inpath.replace_extension("");
     }
     
     /*
      If the output file does not have an extension, a default .prgm or .hpprgm is applied.
      */
-    if (std::filesystem::path(out_filename).extension().empty()) {
-        if (std::filesystem::is_directory(out_filename)) {
-            out_filename = std::filesystem::path(out_filename).append(std::filesystem::path(in_filename).stem().string());
+    if (outpath.extension().empty()) {
+        if (fs::is_directory(outpath)) {
+            outpath = outpath / inpath.stem();
         }
-        out_filename.append(std::filesystem::path(in_filename).extension() == ".hpprgm" ? ".prgm" : ".hpprgm");
+        outpath.replace_extension((inpath.extension() == ".hpprgm" ? "prgm" : "hpprgm"));
     }
 
     /*
      We need to ensure that the specified output filename includes a path.
      If no path is provided, we prepend the path from the input file.
      */
-    if (std::filesystem::path(out_filename).parent_path().empty()) {
-        out_filename.insert(0, "/");
-        out_filename.insert(0, std::filesystem::path(in_filename).parent_path());
+    if (outpath.parent_path().empty()) {
+        outpath = inpath.parent_path() / outpath;
     }
     
     /*
      The output file must differ from the input file. If they are the same, the
      process will be halted and an error message returned to the user.
      */
-    if (in_filename == out_filename) {
+    if (inpath == outpath) {
         std::cerr << "❌ Error: The output file must differ from the input file. Please specify a different output file name.\n";
         return 0;
     }
     
-    if (!std::filesystem::exists(in_filename)) {
-        std::cerr << "❌ Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file is invalid or not supported. Please ensure the file exists and has a valid format.\n";
+    if (!fs::exists(inpath)) {
+        std::cerr << "❌ Error: The specified input ‘" << inpath.filename() << "‘ file is invalid or not supported. Please ensure the file exists and has a valid format.\n";
     }
     
     std::ifstream infile;
     
-    infile.open(in_filename, std::ios::in | std::ios::binary);
+    infile.open(inpath, std::ios::in | std::ios::binary);
     if(!infile.is_open()) {
-        std::cerr << "❌ Error: The specified input ‘" << std::filesystem::path(in_filename).filename() << "‘ file not found.\n";
+        std::cerr << "❌ Error: The specified input ‘" << inpath.filename() << "‘ file not found.\n";
         return 0;
     }
     
-    if (std::filesystem::path(out_filename).extension() == ".prgm") {
-        std::wstring wstr = hpprgm::load(in_filename);
-        utf::save(out_filename, wstr);
+    if (std::filesystem::path(outpath).extension() == ".prgm") {
+        std::wstring wstr = hpprgm::load(inpath);
+        utf::save(outpath, wstr);
     }
     
-    if (std::filesystem::path(out_filename).extension() == ".hpprgm") {
-        std::wstring wstr = utf::load(in_filename);
+    if (outpath.extension() == ".hpprgm") {
+        std::wstring wstr = utf::load(inpath);
         std::string str = utf::utf8(wstr);
-        hpprgm::save(out_filename, str);
+        hpprgm::save(outpath, str);
     }
     
-    if (std::filesystem::exists(out_filename)) {
-        std::cerr << "✅ File " << std::filesystem::path(out_filename).filename() << " succefuly created.\n";
+    if (std::filesystem::exists(outpath)) {
+        std::cerr << "✅ File " << outpath.filename() << " succefuly created.\n";
     }
     
     return 0;

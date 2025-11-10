@@ -27,10 +27,11 @@
 
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 
 namespace hpprgm {
-    std::wstring load(const std::string& filepath);
-    bool save(const std::string& filepath, const std::string& str);
+    std::wstring load(const std::filesystem::path& path);
+    bool save(const std::filesystem::path& path, const std::string& str);
 }
 
 #endif /* hpprgm_hpp */

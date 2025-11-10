@@ -25,13 +25,13 @@
 #include "hpprgm.hpp"
 #include "utf.hpp"
 
-static std::wstring extractPPLCode(const std::string& s) {
+static std::wstring extractPPLCode(const std::filesystem::path& path) {
     uint32_t u32;
     std::streampos pos, codePos;
     std::wstring wstr;
     std::ifstream is;
     
-    is.open(s, std::ios::in | std::ios::binary);
+    is.open(path, std::ios::in | std::ios::binary);
     
     while (!is.eof()) {
         is.read((char *)&u32, sizeof(uint32_t));
@@ -66,16 +66,14 @@ static std::wstring extractPPLCode(const std::string& s) {
 }
 
 
-static bool isG1(const std::string& filepath) {
+static bool isG1(const std::filesystem::path& path) {
     std::ifstream is;
     uint32_t header_size, code_size;
-    std::filesystem::path path;
     
-    path = std::filesystem::path(filepath);
     if (!std::filesystem::exists(path)) return false;
     auto filesize = std::filesystem::file_size(path);
     
-    is.open(filepath, std::ios::in | std::ios::binary);
+    is.open(path, std::ios::in | std::ios::binary);
     is.read(reinterpret_cast<char*>(&header_size), sizeof(header_size));
     if (filesize < header_size + 4) {
         is.close();
@@ -88,34 +86,34 @@ static bool isG1(const std::string& filepath) {
     return filesize == 4 + header_size + 4 + code_size;
 }
 
-static bool isG2(const std::string& filepath) {
+static bool isG2(const std::filesystem::path& path) {
     std::ifstream is;
     uint32_t sig;
     
-    is.open(filepath, std::ios::in | std::ios::binary);
+    is.open(path, std::ios::in | std::ios::binary);
     is.read(reinterpret_cast<char*>(&sig), sizeof(sig));
     is.close();
     
     return sig == 0xB28A617C;
 }
 
-std::wstring hpprgm::load(const std::string& filepath) {
+std::wstring hpprgm::load(const std::filesystem::path& path) {
     std::wstring wstr;
     
-    if (!std::filesystem::exists(filepath)) return wstr;
+    if (!std::filesystem::exists(path)) return wstr;
     
-    if (std::filesystem::path(filepath).extension() != ".hpprgm") wstr = utf::load(filepath, utf::BOMle);
-    if (std::filesystem::path(filepath).extension() == ".hpprgm") {
-        if (isG2(filepath) || isG1(filepath)) wstr = extractPPLCode(filepath);
+    if (path.extension() != ".hpprgm") wstr = utf::load(path, utf::BOMle);
+    if (path.extension() == ".hpprgm") {
+        if (isG2(path) || isG1(path)) wstr = extractPPLCode(path);
     }
     return wstr;
 }
 
 
-bool hpprgm::save(const std::string& filepath, const std::string& str) {
+bool hpprgm::save(const std::filesystem::path& path, const std::string& str) {
     
     std::ofstream outfile;
-    outfile.open(filepath, std::ios::out | std::ios::binary);
+    outfile.open(path, std::ios::out | std::ios::binary);
     if(!outfile.is_open()) {
         return false;
     }
