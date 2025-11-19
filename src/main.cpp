@@ -202,7 +202,7 @@ int main(int argc, const char **argv)
      If the input file does not have an extension, default .hpprgm is assumed and applied.
      */
     if (inpath.extension().empty()) {
-        inpath.append(".hpprgm");
+        inpath.replace_extension("hpprgm");
     }
     
     /*
@@ -210,7 +210,8 @@ int main(int argc, const char **argv)
      (excluding its extension) as the output file name.
      */
     if (outpath.empty() || outpath == inpath) {
-        outpath = inpath.replace_extension("");
+        outpath = inpath;
+        outpath.replace_extension("");
     }
     
     /*
