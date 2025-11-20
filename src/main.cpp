@@ -96,19 +96,23 @@ void help(void) {
 
 // MARK: - Extensions
 
-std::filesystem::path expand_tilde(const std::filesystem::path& path) {
-    if (!path.empty() && path.string().starts_with("~")) {
+namespace fs = std::filesystem;
+
+namespace std::filesystem {
+    std::filesystem::path expand_tilde(const std::filesystem::path& path) {
+        if (!path.empty() && path.string().starts_with("~")) {
 #ifdef _WIN32
-        const char* home = std::getenv("USERPROFILE");
+            const char* home = std::getenv("USERPROFILE");
 #else
-        const char* home = std::getenv("HOME");
+            const char* home = std::getenv("HOME");
 #endif
-        
-        if (home) {
-            return std::string(home) + path.string().substr(1);  // Replace '~' with $HOME
+            
+            if (home) {
+                return std::filesystem::path(std::string(home) + path.string().substr(1));  // Replace '~' with $HOME
+            }
         }
+        return path;  // return as-is if no tilde or no HOME
     }
-    return path;  // return as-is if no tilde or no HOME
 }
 
 
@@ -142,6 +146,51 @@ std::filesystem::path expand_tilde(const std::filesystem::path& path) {
     #error "C++11 or newer is required"
 #endif
 
+fs::path resolveAndValidateInputFile(const char *input_file) {
+    fs::path path;
+    
+    path = input_file;
+    if (path == "/dev/stdin") return path;
+    
+    path = fs::expand_tilde(path);
+    if (path.parent_path().empty()) path = fs::path("./") / path;
+    
+    // • Applies a default extension
+    if (path.extension().empty()) path.replace_extension("hpprgm");
+    
+    if (!fs::exists(path)) {
+        std::cerr << "❓File " << path.filename() << " not found at " << path.parent_path() << " location.\n";
+        exit(0);
+    }
+    
+    return path;
+}
+
+fs::path resolveOutputFile(const char *output_file) {
+    fs::path path;
+    
+    path = output_file;
+    if (path == "/dev/stdout") return path;
+    
+    path = fs::expand_tilde(path);
+    if (path.parent_path().empty()) path = fs::path("./") / path;
+    
+    return path;
+}
+
+fs::path resolveOutputPath(const fs::path& inpath, const fs::path& outpath) {
+    fs::path path = outpath;
+    
+    if (path == "/dev/stdout") return path;
+    
+    if (path.empty()) path = inpath;
+    if (fs::is_directory(path)) path = path / inpath.filename();
+    if (path.parent_path().empty()) path = inpath.parent_path() / path;
+    path.replace_extension((inpath.extension() == ".hpprgm" ? "prgm" : "hpprgm"));
+    
+    return path;
+}
+
 // MARK: - Main
 
 int main(int argc, const char **argv)
@@ -163,8 +212,7 @@ int main(int argc, const char **argv)
             
             if (args == "-o") {
                 if (++n > argc) error();
-                outpath = fs::path(argv[n]);
-                outpath = expand_tilde(outpath);
+                outpath = resolveOutputFile(argv[n]);
                 continue;
             }
 
@@ -188,72 +236,22 @@ int main(int argc, const char **argv)
             error();
             return 0;
         }
-        inpath = fs::path(argv[n]);
-        inpath = expand_tilde(inpath);
-        if (inpath.parent_path().empty()) {
-            inpath = fs::path("./") / inpath;
-        }
+        
+        inpath = resolveAndValidateInputFile(argv[n]);
     }
     
-    if (outpath != "/dev/stdout") info();
-    
-    
-    /*
-     If the input file does not have an extension, default .hpprgm is assumed and applied.
-     */
-    if (inpath.extension().empty()) {
-        inpath.replace_extension("hpprgm");
-    }
-    
-    /*
-     If no output file is specified, the program will use the input file’s name
-     (excluding its extension) as the output file name.
-     */
-    if (outpath.empty() || outpath == inpath) {
-        outpath = inpath;
-        outpath.replace_extension("");
-    }
-    
-    /*
-     If the output file does not have an extension, a default .prgm or .hpprgm is applied.
-     */
-    if (outpath.extension().empty()) {
-        if (fs::is_directory(outpath)) {
-            outpath = outpath / inpath.stem();
-        }
-        outpath.replace_extension((inpath.extension() == ".hpprgm" ? "prgm" : "hpprgm"));
-    }
-
-    /*
-     We need to ensure that the specified output filename includes a path.
-     If no path is provided, we prepend the path from the input file.
-     */
-    if (outpath.parent_path().empty()) {
-        outpath = inpath.parent_path() / outpath;
-    }
-    
-    /*
-     The output file must differ from the input file. If they are the same, the
-     process will be halted and an error message returned to the user.
-     */
-    if (inpath == outpath) {
-        std::cerr << "❌ Error: The output file must differ from the input file. Please specify a different output file name.\n";
-        return 0;
-    }
-    
-    if (!fs::exists(inpath)) {
-        std::cerr << "❌ Error: The specified input ‘" << inpath.filename() << "‘ file is invalid or not supported. Please ensure the file exists and has a valid format.\n";
-    }
+    outpath = resolveOutputPath(inpath, outpath);
     
     std::ifstream infile;
     
     infile.open(inpath, std::ios::in | std::ios::binary);
-    if(!infile.is_open()) {
-        std::cerr << "❌ Error: The specified input ‘" << inpath.filename() << "‘ file not found.\n";
-        return 0;
+
+    if (!infile.is_open()) {
+        std::cerr << "❓File " << inpath.filename() << " not found at " << inpath.parent_path() << " location.\n";
+        exit(0);
     }
     
-    if (std::filesystem::path(outpath).extension() == ".prgm") {
+    if (outpath.extension() == ".prgm") {
         std::wstring wstr = hpprgm::load(inpath);
         utf::save(outpath, wstr);
     }
@@ -264,9 +262,13 @@ int main(int argc, const char **argv)
         hpprgm::save(outpath, str);
     }
     
-    if (std::filesystem::exists(outpath)) {
-        std::cerr << "✅ File " << outpath.filename() << " succefuly created.\n";
+    
+    if (!std::filesystem::exists(outpath)) {
+        std::cerr << "❌ Unable to create file " << outpath.filename() << ".\n";
+        return 0;
     }
+
+    std::cerr << "✅ File " << outpath.filename() << " succefuly created.\n";
     
     return 0;
 }

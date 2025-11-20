@@ -25,16 +25,69 @@
 #include "hpprgm.hpp"
 #include "utf.hpp"
 
+#include <iostream>
+
+static bool isG1(const std::filesystem::path& path) {
+    std::ifstream is;
+    uint32_t header_size, code_size;
+    
+    if (!std::filesystem::exists(path)) return false;
+    auto filesize = std::filesystem::file_size(path);
+    
+    is.open(path, std::ios::in | std::ios::binary);
+    is.read(reinterpret_cast<char*>(&header_size), sizeof(header_size));
+    if (filesize < header_size + 4) {
+        is.close();
+        return false;
+    }
+    is.seekg(header_size, std::ios::cur);
+    is.read(reinterpret_cast<char*>(&code_size), sizeof(code_size));
+    is.close();
+    
+    uint32_t size = 4 + header_size + 4 + code_size;
+    return filesize == size || filesize - size == 2;
+}
+
+static bool isG2(const std::filesystem::path& path) {
+    std::ifstream is;
+    uint32_t sig;
+    
+    is.open(path, std::ios::in | std::ios::binary);
+    is.read(reinterpret_cast<char*>(&sig), sizeof(sig));
+    is.close();
+    
+    return sig == 0xB28A617C;
+}
+
 static std::wstring extractPPLCode(const std::filesystem::path& path) {
     uint32_t u32;
     std::streampos pos, codePos;
     std::wstring wstr;
     std::ifstream is;
     
+    
+    
     is.open(path, std::ios::in | std::ios::binary);
+    if (!is.is_open()) return wstr;
+    
+    if (isG1(path)) {
+        uint32_t header_size, code_size;
+        auto filesize = std::filesystem::file_size(path);
+        is.read(reinterpret_cast<char*>(&header_size), sizeof(header_size));
+        if (filesize < header_size + 4) {
+            is.close();
+            return wstr;
+        }
+        is.seekg(header_size, std::ios::cur);
+        is.read(reinterpret_cast<char*>(&code_size), sizeof(code_size));
+        wstr = utf::read(is, utf::BOMnone);
+        is.close();
+        
+        return wstr;
+    }
     
     while (!is.eof()) {
-        is.read((char *)&u32, sizeof(uint32_t));
+        is.read(reinterpret_cast<char*>(&u32), sizeof(u32));
         if (u32 == 0x00C0009B) {
             is.seekg(is.tellg(), std::ios::beg);
             wstr = utf::read(is, utf::BOMnone);
@@ -65,37 +118,6 @@ static std::wstring extractPPLCode(const std::filesystem::path& path) {
     return wstr;
 }
 
-
-static bool isG1(const std::filesystem::path& path) {
-    std::ifstream is;
-    uint32_t header_size, code_size;
-    
-    if (!std::filesystem::exists(path)) return false;
-    auto filesize = std::filesystem::file_size(path);
-    
-    is.open(path, std::ios::in | std::ios::binary);
-    is.read(reinterpret_cast<char*>(&header_size), sizeof(header_size));
-    if (filesize < header_size + 4) {
-        is.close();
-        return false;
-    }
-    is.seekg(header_size, std::ios::cur);
-    is.read(reinterpret_cast<char*>(&code_size), sizeof(code_size));
-    is.close();
-    
-    return filesize == 4 + header_size + 4 + code_size;
-}
-
-static bool isG2(const std::filesystem::path& path) {
-    std::ifstream is;
-    uint32_t sig;
-    
-    is.open(path, std::ios::in | std::ios::binary);
-    is.read(reinterpret_cast<char*>(&sig), sizeof(sig));
-    is.close();
-    
-    return sig == 0xB28A617C;
-}
 
 std::wstring hpprgm::load(const std::filesystem::path& path) {
     std::wstring wstr;
