@@ -54,26 +54,6 @@ void error(void) {
     exit(0);
 }
 
-void info(void) {
-    std::cerr
-    << "          ***********     \n"
-    << "        ************      \n"
-    << "      ************        \n"
-    << "    ************  **      \n"
-    << "  ************  ******    \n"
-    << "************  **********  \n"
-    << "**********    ************\n"
-    << "************    **********\n"
-    << "  **********  ************\n"
-    << "    ******  ************  \n"
-    << "      **  ************    \n"
-    << "        ************      \n"
-    << "      ************        \n"
-    << "    ************          \n\n"
-    << "Copyright (C) 2024-" << YEAR << " Insoft.\n"
-    << "Insoft " << NAME << "\n\n";
-}
-
 void help(void) {
     std::cerr
     << "Copyright (C) 2024-" << YEAR << " Insoft.\n"
@@ -173,7 +153,6 @@ fs::path resolveOutputFile(const char *output_file) {
     if (path == "/dev/stdout") return path;
     
     path = fs::expand_tilde(path);
-    if (path.parent_path().empty()) path = fs::path("./") / path;
     
     return path;
 }
@@ -185,8 +164,8 @@ fs::path resolveOutputPath(const fs::path& inpath, const fs::path& outpath) {
     
     if (path.empty()) path = inpath;
     if (fs::is_directory(path)) path = path / inpath.filename();
-    if (path.parent_path().empty()) path = inpath.parent_path() / path;
     path.replace_extension((inpath.extension() == ".hpprgm" ? "prgm" : "hpprgm"));
+    if (path.parent_path().empty()) path = inpath.parent_path() / path;
     
     return path;
 }
@@ -251,17 +230,23 @@ int main(int argc, const char **argv)
         exit(0);
     }
     
-    if (outpath.extension() == ".prgm") {
-        std::wstring wstr = hpprgm::load(inpath);
-        utf::save(outpath, wstr);
+    std::wstring wstr;
+    
+    if (inpath.extension() == ".hpprgm" || inpath.extension() == ".hpappprgm") {
+        wstr = hpprgm::load(inpath);
+    } else {
+        wstr = utf::load(inpath, utf::BOMle);
     }
     
-    if (outpath.extension() == ".hpprgm") {
-        std::wstring wstr = utf::load(inpath);
-        std::string str = utf::utf8(wstr);
-        hpprgm::save(outpath, str);
+    if (outpath == "/dev/stdout") {
+        std::cout << utf::utf8(wstr);
+    } else {
+        if (outpath.extension() == ".hpprgm") {
+            hpprgm::save(outpath, utf::utf8(wstr));
+        } else {
+            utf::save(outpath, wstr);
+        }
     }
-    
     
     if (!std::filesystem::exists(outpath)) {
         std::cerr << "❌ Unable to create file " << outpath.filename() << ".\n";

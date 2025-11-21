@@ -78,7 +78,7 @@ static std::wstring extractPPLCode(const std::filesystem::path& path) {
             is.close();
             return wstr;
         }
-        is.seekg(header_size, std::ios::cur);
+        is.seekg(header_size - 2, std::ios::cur);
         is.read(reinterpret_cast<char*>(&code_size), sizeof(code_size));
         wstr = utf::read(is, utf::BOMnone);
         is.close();
@@ -124,8 +124,8 @@ std::wstring hpprgm::load(const std::filesystem::path& path) {
     
     if (!std::filesystem::exists(path)) return wstr;
     
-    if (path.extension() != ".hpprgm") wstr = utf::load(path, utf::BOMle);
-    if (path.extension() == ".hpprgm") {
+    if (path.extension() == ".prgm") wstr = utf::load(path, utf::BOMle);
+    if (path.extension() == ".hpprgm" || path.extension() == ".hpappprgm") {
         if (isG2(path) || isG1(path)) wstr = extractPPLCode(path);
     }
     return wstr;
