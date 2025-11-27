@@ -238,6 +238,14 @@ int main(int argc, const char **argv)
         wstr = utf::load(inpath, utf::BOMle);
     }
     
+    if (wstr.empty()) {
+        if (!std::filesystem::exists(outpath)) {
+            std::cerr << "❌ Unable extract PPL source code " << inpath.filename() << ".\n";
+            return 0;
+        }
+        return 0;
+    }
+    
     if (outpath == "/dev/stdout") {
         std::cout << utf::utf8(wstr);
     } else {

@@ -60,12 +60,9 @@ static bool isG2(const std::filesystem::path& path) {
 }
 
 static std::wstring extractPPLCode(const std::filesystem::path& path) {
-    uint32_t u32;
     std::streampos pos, codePos;
     std::wstring wstr;
     std::ifstream is;
-    
-    
     
     is.open(path, std::ios::in | std::ios::binary);
     if (!is.is_open()) return wstr;
@@ -85,36 +82,20 @@ static std::wstring extractPPLCode(const std::filesystem::path& path) {
         
         return wstr;
     }
-    
-    while (!is.eof()) {
-        is.read(reinterpret_cast<char*>(&u32), sizeof(u32));
-        if (u32 == 0x00C0009B) {
-            is.seekg(is.tellg(), std::ios::beg);
+
+    uint16_t u16;
+    while (is.read(reinterpret_cast<char*>(&u16), sizeof(u16))) {
+        if (u16 == 0x009B) {
+            is.read(reinterpret_cast<char*>(&u16), sizeof(u16));
+            if (u16 != 0x00C0) continue;
+            is.seekg(-2, std::ios::cur);
             wstr = utf::read(is, utf::BOMnone);
             is.close();
             
             return wstr;
         }
-        is.peek();
     }
-    
-    is.seekg(0, std::ios::beg);
-    is.read(reinterpret_cast<char*>(&u32), sizeof(u32));
-    
-    is.seekg(u32, std::ios::cur);
-    is.read(reinterpret_cast<char*>(&u32), sizeof(u32));
-    
-    codePos = is.tellg();
-    is.seekg(u32, std::ios::cur);
-    pos = is.tellg();
-    
-    is.seekg(0, std::ios::end);
-    if (is.tellg() != pos) {
-        is.close();
-    }
-    
-    is.seekg(codePos, std::ios::beg);
-    wstr = utf::read(is, utf::BOMnone);
+
     return wstr;
 }
 
