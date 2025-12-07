@@ -6,4 +6,4 @@
 This command line tool provides the ability to extract **PPL** code from an HP Prime G1/G2 `.hpprgm` file format as well as converting `.prgm` file to HP Prime G1 `.hpprgm` file format.
 
 >[!NOTE]
->Deprecated. ppl+ now provides built-in support for extracting PPL code from .hpprgm and .hpappprgm files.
+>This tool is deprecated. ppl+ now provides this functionality, so the utility is no longer relevant and will not receive further updates.
